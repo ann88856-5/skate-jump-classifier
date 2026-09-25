@@ -1,0 +1,16 @@
+# Данные (тяжёлые)
+dataset/*.npy
+dataset/best_model.pt
+json/
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Служебное
+.DS_Store
+.vscode/
+.idea/
