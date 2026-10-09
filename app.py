@@ -4,12 +4,27 @@ import torch.nn as nn
 from fastapi import FastAPI, UploadFile, File
 from pathlib import Path
 import shutil
+import psycopg
 
 app = FastAPI()
 
 DATA_DIR = Path(r"C:\КП\dataset")
-
 CLASSES = ["Axel", "Flip", "Loop", "Lutz", "Salchow", "Toeloop"]
+
+DB_CONFIG = {
+    "dbname": "skate_analysis",
+    "user": "postgres",
+    "password": "qazwsx89",
+    "host": "localhost",
+    "port": 5432,
+    "client_encoding": "UTF8",
+}
+
+# Индексы маркеров для подсчёта оборотов
+with open(DATA_DIR / "markers.txt", encoding="utf-8") as f:
+    MARKERS = f.read().splitlines()
+IDX_L_HIP = MARKERS.index("L_Hip Joint")
+IDX_R_HIP = MARKERS.index("R_Hip Joint")
 
 
 class JumpLSTM(nn.Module):
@@ -27,11 +42,26 @@ class JumpLSTM(nn.Module):
         return self.fc(out)
 
 
-# Загружаем модель ОДИН РАЗ при старте
+# Загружаем модель один раз
 model = JumpLSTM(input_dim=411)
 model.load_state_dict(torch.load(DATA_DIR / "best_model.pt", map_location="cpu"))
 model.eval()
 print("Модель загружена")
+
+
+def count_rotations(pose_seq):
+    """Считает обороты по углу линии бёдер в плоскости XZ.
+    
+    pose_seq: (300, 137, 3)
+    Возвращает число оборотов.
+    """
+    l_hip = pose_seq[:, IDX_L_HIP, :]
+    r_hip = pose_seq[:, IDX_R_HIP, :]
+    vec = r_hip - l_hip  # (300, 3)
+    angle = np.arctan2(vec[:, 2], vec[:, 0])
+    angle_unwrapped = np.unwrap(angle)
+    rotations = (angle_unwrapped[-1] - angle_unwrapped[0]) / (2 * np.pi)
+    return float(abs(rotations))
 
 
 @app.get("/")
@@ -41,28 +71,55 @@ def root():
 
 @app.post("/analyze")
 async def analyze(file: UploadFile = File(...)):
-    """Принимает видео, возвращает тип прыжка.
-    
-    Пока — заглушка: возвращает случайный класс.
-    Следующий шаг — предобработка видео в X и вызов модели.
-    """
+    """Принимает видео, возвращает тип прыжка и число оборотов."""
     # Сохраняем файл
     save_path = DATA_DIR / "uploads" / file.filename
     save_path.parent.mkdir(exist_ok=True)
     with open(save_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    # TODO: предобработка видео → X (300, 137, 3) → нормализация
-    # Пока — заглушка
-    X = np.random.randn(1, 300, 411).astype(np.float32)
+    # Заглушка: видео → 3D-позы (Спринт 3)
+    # Пока берём случайный пример из тестового набора
+    X_test_raw = np.load(DATA_DIR / "X_test.npy")  # (N, 300, 137, 3)
+    idx = np.random.randint(0, len(X_test_raw))
+    pose_seq = X_test_raw[idx]  # (300, 137, 3)
+
+    # Подсчёт оборотов
+    rotations = count_rotations(pose_seq)
+
+    # Сплющиваем для модели
+    X = pose_seq.reshape(1, 300, -1).astype(np.float32)  # (1, 300, 411)
 
     with torch.no_grad():
         logits = model(torch.tensor(X))
-        pred = logits.argmax(1).item()
         probs = torch.softmax(logits, dim=1).numpy()[0]
+        pred = int(probs.argmax())
+
+    # Сохраняем в PostgreSQL
+    conn = psycopg.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute(
+        """INSERT INTO sessions (filename, jump_type, confidence, rotations)
+        VALUES (%s, %s, %s, %s) RETURNING id""",
+        (file.filename, CLASSES[pred], float(probs[pred]), rotations)
+    )
+    session_id = cur.fetchone()[0]
+
+    for i, cls in enumerate(CLASSES):
+        cur.execute(
+            """INSERT INTO session_probs (session_id, class_name, probability)
+            VALUES (%s, %s, %s)""",
+            (session_id, cls, float(probs[i]))
+        )
+
+    conn.commit()
+    cur.close()
+    conn.close()
 
     return {
+        "session_id": session_id,
         "jump_type": CLASSES[pred],
         "confidence": float(probs[pred]),
-        "all_probs": {CLASSES[i]: float(probs[i]) for i in range(6)}
+        "rotations": rotations,
+        "all_probs": {CLASSES[i]: float(probs[i]) for i in range(6)},
     }

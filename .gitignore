@@ -14,3 +14,8 @@ venv/
 __MACOSX/
 .vscode/
 .idea/
+
+#не трогайте пж это коммитить не надо
+pose_landmarker_full.task
+json/pose_test.json
+json/rotations_test.json
