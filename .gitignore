@@ -13,4 +13,4 @@ venv/
 .DS_Store
 __MACOSX/
 .vscode/
-.idea/
+.idea/node_modules/
