@@ -22,4 +22,4 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # Открываем порт 80
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
