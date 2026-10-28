@@ -1,10 +1,14 @@
 import numpy as np
+from pdf_utils import create_analysis_pdf
 import torch
 import torch.nn as nn
 from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import StreamingResponse
 from pathlib import Path
 import shutil
 import psycopg
+import io
 
 app = FastAPI()
 
@@ -123,3 +127,52 @@ async def analyze(file: UploadFile = File(...)):
         "rotations": rotations,
         "all_probs": {CLASSES[i]: float(probs[i]) for i in range(6)},
     }
+
+@app.get("/report/{session_id}")
+async def download_report(session_id: int):
+    """Генерирует и возвращает PDF-отчёт по ID сессии из PostgreSQL."""
+    conn = psycopg.connect(**DB_CONFIG)
+    cur = conn.cursor()
+
+    try:
+        # 1. Получаем основную информацию о сессии
+        cur.execute(
+            """SELECT filename, jump_type, confidence, rotations
+               FROM sessions WHERE id = %s""",
+            (session_id,)
+        )
+        row = cur.fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        filename, jump_type, confidence, rotations = row
+
+        # 2. Получаем вероятности по всем классам
+        cur.execute(
+            """SELECT class_name, probability
+               FROM session_probs WHERE session_id = %s
+               ORDER BY probability DESC""",
+            (session_id,)
+        )
+        prob_rows = cur.fetchall()
+        all_probs = {cls: float(prob) for cls, prob in prob_rows}
+
+    finally:
+        cur.close()
+        conn.close()
+
+    # 3. Генерируем PDF
+    pdf_buffer = create_analysis_pdf(
+        session_id=session_id,
+        filename=filename,
+        jump_type=jump_type,
+        confidence=float(confidence),
+        rotations=float(rotations),
+        all_probs=all_probs,
+    )
+
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=report_{session_id}.pdf"}
+    )
