@@ -9,12 +9,11 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from pathlib import Path
 
-<<<<<<< HEAD
 path = "Axel_1.json"
-=======
+
 MODEL_URL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task"
 MODEL_PATH = "pose_landmarker_full.task"
->>>>>>> 31b6d299feeb892204d29d2996dcf49bc8231f71
+
 
 
 def download_model():
