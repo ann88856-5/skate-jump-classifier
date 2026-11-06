@@ -1,7 +1,5 @@
-# Используем официальный образ Python
 FROM python:3.14-slim
 
-# Устанавливаем рабочую директорию
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -15,19 +13,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Копируем файл с зависимостями (если его нет, создайте)
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir --timeout 600 --retries 5 \
+    torch==2.15.0 \
+    -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-# Устанавливаем зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем весь остальной код
+COPY json ./json
+COPY dataset ./dataset
 COPY . .
 
-# Открываем порт, который слушает ваше приложение (обычно 5000 или 8000)
 EXPOSE 8000
 
-# Команда для запуска (предполагая, что app.py — это Flask/FastAPI приложение)
 CMD ["python", "app.py"]

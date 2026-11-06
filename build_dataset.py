@@ -3,8 +3,8 @@ import numpy as np
 from pathlib import Path
 from collections import Counter
 
-DATA_ROOT = Path(r"C:\КП\json")
-OUTPUT_DIR = Path(r"C:\КП\dataset")
+DATA_ROOT = Path("json")
+OUTPUT_DIR = Path("dataset")
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 CLASSES = ["Axel", "Flip", "Loop", "Lutz", "Salchow", "Toeloop"]

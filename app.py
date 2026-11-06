@@ -12,13 +12,13 @@ import io
 
 app = FastAPI()
 
-DATA_DIR = Path(r"C:\КП\dataset")
+DATA_DIR = Path("dataset")
 CLASSES = ["Axel", "Flip", "Loop", "Lutz", "Salchow", "Toeloop"]
 
 DB_CONFIG = {
     "dbname": "skate_analysis",
     "user": "postgres",
-    "password": "qazwsx89",
+    "password": "1234",
     "host": "localhost",
     "port": 5432,
     "client_encoding": "UTF8",
@@ -84,9 +84,9 @@ async def analyze(file: UploadFile = File(...)):
 
     # Заглушка: видео → 3D-позы (Спринт 3)
     # Пока берём случайный пример из тестового набора
-    X_test_raw = np.load(DATA_DIR / "X_test.npy")  # (N, 300, 137, 3)
+    X_test_raw = np.load(DATA_DIR / "X_test.npy")
     idx = np.random.randint(0, len(X_test_raw))
-    pose_seq = X_test_raw[idx]  # (300, 137, 3)
+    pose_seq = X_test_raw[idx]
 
     # Подсчёт оборотов
     rotations = count_rotations(pose_seq)
@@ -99,7 +99,6 @@ async def analyze(file: UploadFile = File(...)):
         probs = torch.softmax(logits, dim=1).numpy()[0]
         pred = int(probs.argmax())
 
-    # Сохраняем в PostgreSQL
     conn = psycopg.connect(**DB_CONFIG)
     cur = conn.cursor()
     cur.execute(
