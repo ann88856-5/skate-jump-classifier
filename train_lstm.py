@@ -11,7 +11,7 @@ np.random.seed(SEED)
 torch.manual_seed(SEED)
 torch.cuda.manual_seed_all(SEED)
 
-DATA_DIR = Path("dataset")
+DATA_DIR = Path(r"C:\KP\dataset")
 
 X_train = np.load(DATA_DIR / "X_train_lstm.npy")
 X_test = np.load(DATA_DIR / "X_test_lstm.npy")
@@ -49,7 +49,7 @@ model = JumpLSTM(input_dim=X_train.shape[2]).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-4)
 criterion = nn.CrossEntropyLoss()
 
-EPOCHS = 100
+EPOCHS = 25
 best_test_acc = 0
 best_epoch = 0
 patience = 25

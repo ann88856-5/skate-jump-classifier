@@ -1,35 +1,43 @@
 import numpy as np
 from pathlib import Path
 
-DATA_DIR = Path("dataset")
+DATA_DIR = Path(r"C:\KP\dataset")
 
-X = np.load(DATA_DIR / "X_norm.npy")
+# Загружаем данные
+X = np.load(DATA_DIR / "X.npy")
 y = np.load(DATA_DIR / "y.npy")
 
-# Читаем meta
-with open(DATA_DIR / "meta.txt", encoding="utf-8") as f:
-    meta = [line.strip().split("\t") for line in f if line.strip()]
+num_classes = 6
+X_train, X_test, y_train, y_test = [], [], [], []
 
-skaters = np.array([m[0] for m in meta])
-print("Фигуристы:", np.unique(skaters, return_counts=True))
+np.random.seed(42) # Чтобы результат был одинаковым при перезапуске
 
-# Skater_A, B, C → train, Skater_D → test
-train_mask = skaters != "Skater_D"
-test_mask = skaters == "Skater_D"
+for c in range(num_classes):
+    idx = np.where(y == c)[0]
+    np.random.shuffle(idx)
+    
+    # Берем 80% в трейн, 20% в тест для каждого класса отдельно
+    split_point = int(len(idx) * 0.8)
+    train_idx = idx[:split_point]
+    test_idx = idx[split_point:]
+    
+    X_train.append(X[train_idx])
+    X_test.append(X[test_idx])
+    y_train.append(y[train_idx])
+    y_test.append(y[test_idx])
 
-X_train, y_train = X[train_mask], y[train_mask]
-X_test, y_test = X[test_mask], y[test_mask]
+# Склеиваем обратно
+X_train = np.concatenate(X_train, axis=0)
+X_test = np.concatenate(X_test, axis=0)
+y_train = np.concatenate(y_train, axis=0)
+y_test = np.concatenate(y_test, axis=0)
 
-print(f"\nTrain: X={X_train.shape}, y={y_train.shape}")
-print(f"Test:  X={X_test.shape}, y={y_test.shape}")
+print(f"X_train: {X_train.shape}, X_test: {X_test.shape}")
 
-# Проверка баланса
-import collections
-print(f"\nTrain классы: {collections.Counter(y_train.tolist())}")
-print(f"Test классы:  {collections.Counter(y_test.tolist())}")
-
+# Сохраняем
 np.save(DATA_DIR / "X_train.npy", X_train)
-np.save(DATA_DIR / "y_train.npy", y_train)
 np.save(DATA_DIR / "X_test.npy", X_test)
+np.save(DATA_DIR / "y_train.npy", y_train)
 np.save(DATA_DIR / "y_test.npy", y_test)
-print(f"\nСохранено: X_train, y_train, X_test, y_test")
+
+print("Готово!")

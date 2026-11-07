@@ -1,7 +1,11 @@
 # Данные (тяжелые)
 dataset/
+videos/
+downloaded/
 json/
 *.zip
+*.mp4
+*.avi
 
 # Python
 __pycache__/
@@ -13,14 +17,11 @@ venv/
 .DS_Store
 __MACOSX/
 .vscode/
-<<<<<<< HEAD
 .idea/
 
-#не трогайте пж это коммитить не надо
 pose_landmarker_full.task
-json/pose_test.json
-json/rotations_test.json
-=======
-.idea/node_modules/
-node_modules/
->>>>>>> 29ca23c98b7cb98be885ea2837a0479131220c8d
+*.task
+*.pt
+
+json/pose_*.json
+json/rotations_*.json
