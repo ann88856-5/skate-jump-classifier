@@ -6,12 +6,12 @@ import numpy as np
 from pathlib import Path
 
 # ПУТИ
-DATA_ROOT = Path(r"C:\KP\videos")
-OUTPUT_DIR = Path(r"C:\KP\dataset")
+DATA_ROOT = Path("videos")
+OUTPUT_DIR = Path("dataset")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ПУТЬ К ФАЙЛУ МОДЕЛИ 
-MODEL_PATH = r"C:\KP\pose_landmarker_full.task" 
+MODEL_PATH = "pose_landmarker_full.task" 
 
 CLASSES = ["Axel", "Flip", "Loop", "Lutz", "Salchow", "Toeloop"]
 CLASS_TO_IDX = {c: i for i, c in enumerate(CLASSES)}

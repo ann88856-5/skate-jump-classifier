@@ -7,9 +7,9 @@ from pathlib import Path
 import urllib.request
 
 # Пути к видео
-VIDEO_IN = Path(r"C:\KP\skater_A\cam_1\Axel_1.mp4")
-VIDEO_OUT = Path(r"C:\KP\output_skeleton.mp4")
-MODEL_PATH = Path(r"C:\KP\pose_landmarker.task")
+VIDEO_IN = Path("skater_A\\cam_1\\Axel_1.mp4")
+VIDEO_OUT = Path("output_skeleton.mp4")
+MODEL_PATH = Path("pose_landmarker.task")
 
 # Скачиваем модель, если её нет
 if not MODEL_PATH.exists():
