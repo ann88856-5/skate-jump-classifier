@@ -11,7 +11,7 @@ np.random.seed(SEED)
 torch.manual_seed(SEED)
 torch.cuda.manual_seed_all(SEED)
 
-DATA_DIR = Path(r"C:\KP\dataset")
+DATA_DIR = Path("dataset")
 
 X_train = np.load(DATA_DIR / "X_train_lstm.npy")
 X_test = np.load(DATA_DIR / "X_test_lstm.npy")

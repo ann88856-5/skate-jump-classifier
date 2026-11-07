@@ -1,7 +1,7 @@
 import numpy as np
 from pathlib import Path
 
-DATA_DIR = Path(r"C:\KP\dataset")
+DATA_DIR = Path("dataset")
 
 X_train = np.load(DATA_DIR / "X_train.npy")  # (N, 300, 137, 3)
 X_test = np.load(DATA_DIR / "X_test.npy")
