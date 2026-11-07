@@ -1,7 +1,7 @@
 import numpy as np
 from pathlib import Path
 
-DATA_DIR = Path(r"C:\KP\dataset")
+DATA_DIR = Path("dataset")
 
 # Загружаем данные
 X = np.load(DATA_DIR / "X.npy")

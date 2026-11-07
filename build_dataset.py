@@ -5,13 +5,9 @@ from mediapipe.tasks.python import vision
 import numpy as np
 from pathlib import Path
 
-# ПУТИ
-DATA_ROOT = Path(r"C:\KP\videos")
-OUTPUT_DIR = Path(r"C:\KP\dataset")
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-# ПУТЬ К ФАЙЛУ МОДЕЛИ 
-MODEL_PATH = r"C:\KP\pose_landmarker_full.task" 
+DATA_ROOT = Path("json")
+OUTPUT_DIR = Path("dataset")
+OUTPUT_DIR.mkdir(exist_ok=True)
 
 CLASSES = ["Axel", "Flip", "Loop", "Lutz", "Salchow", "Toeloop"]
 CLASS_TO_IDX = {c: i for i, c in enumerate(CLASSES)}
