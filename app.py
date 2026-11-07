@@ -12,7 +12,7 @@ import io
 
 app = FastAPI()
 
-DATA_DIR = Path("dataset")
+DATA_DIR = Path(r"C:\KP\dataset")
 CLASSES = ["Axel", "Flip", "Loop", "Lutz", "Salchow", "Toeloop"]
 
 DB_CONFIG = {

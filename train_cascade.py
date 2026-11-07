@@ -21,11 +21,15 @@ class BiLSTM(nn.Module):
     def __init__(self, input_size, hidden_size, num_classes):
         super(BiLSTM, self).__init__()
         self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True, bidirectional=True)
+        self.dropout = nn.Dropout(0.3) # Добавим дропаут для стабильности
         self.fc = nn.Linear(hidden_size * 2, num_classes)
 
     def forward(self, x):
         out, _ = self.lstm(x)
-        out = self.fc(out[:, -1, :]) # Берем последний временной шаг
+        # Усредняем по всем временным шагам, как в train_lstm.py
+        out = out.mean(dim=1) 
+        out = self.dropout(out)
+        out = self.fc(out)
         return out
 
 input_size = X_train.shape[2]

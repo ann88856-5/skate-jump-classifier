@@ -1,6 +1,6 @@
 import json
 
-path = "Axel_1.json"
+path = r"C:\KP\json\Skater_A\Axel\Axel_1.json"
 
 with open(path, encoding="utf-8") as f:
     data = json.load(f)

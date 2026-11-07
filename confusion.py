@@ -4,7 +4,7 @@ import torch.nn as nn
 from pathlib import Path
 from sklearn.metrics import confusion_matrix, classification_report
 
-DATA_DIR = Path("dataset")
+DATA_DIR = Path(r"C:\KP\dataset")
 CLASSES = ["Axel", "Flip", "Loop", "Lutz", "Salchow", "Toeloop"]
 
 
