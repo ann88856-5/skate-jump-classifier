@@ -15,16 +15,14 @@ def create_analysis_pdf(session_id: int, filename: str, jump_type: str,
     elements = []
     styles = getSampleStyleSheet()
 
-    # Заголовок
     title_style = ParagraphStyle(
         'CustomTitle', parent=styles['Heading1'],
         fontSize=20, textColor=colors.HexColor('#1a5490'),
-        spaceAfter=20, alignment=1  # 1 = по центру
+        spaceAfter=20, alignment=1
     )
     elements.append(Paragraph("Skate Jump Analysis Report", title_style))
     elements.append(Spacer(1, 0.2 * inch))
 
-    # Основная информация
     info_data = [
         ["Session ID", str(session_id)],
         ["File", filename],

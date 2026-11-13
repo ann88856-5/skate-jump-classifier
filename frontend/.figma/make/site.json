@@ -1,0 +1,10 @@
+{
+  "description": "Анализирует прыжки в фигурном катании с помощью ИИ, определяет их тип и помогает оценить качество исполнения.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

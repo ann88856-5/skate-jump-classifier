@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from collections import Counter
 
-DATA_ROOT = Path(r"C:\КП\json")
+DATA_ROOT = Path("json")
 SKIP_MARKERS = {"LAB_ORIGIN", "LAB_X", "LAB_Y", "LAB_Z", "Lab orientation"}
 
 shapes = []

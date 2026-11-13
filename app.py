@@ -20,7 +20,6 @@ import psycopg
 import io
 
 app = FastAPI()
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -29,7 +28,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DATA_DIR = Path(r"C:\КП\dataset")
+DATA_DIR = Path("dataset") 
+
 UPLOAD_DIR = DATA_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
@@ -40,7 +40,7 @@ MODEL_PATH = Path(r"C:\KP\pose_landmarker.task")
 DB_CONFIG = {
     "dbname": "skate_analysis",
     "user": "postgres",
-    "password": "qazwsx89",
+    "password": "1234",
     "host": "localhost",
     "port": 5432,
     "client_encoding": "UTF8",
@@ -217,16 +217,8 @@ async def analyze(file: UploadFile = File(...)):
     with open(save_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    # Накладываем скелет
-    skeleton_filename = f"skeleton_{file.filename}"
-    skeleton_path = UPLOAD_DIR / skeleton_filename
-    try:
-        process_video_with_skeleton(save_path, skeleton_path)
-    except Exception as e:
-        print(f"Ошибка наложения скелета: {e}")
-        skeleton_filename = None
-
-    # Анализ (заглушка: видео → 3D-позы → Спринт 3)
+    # Заглушка: видео → 3D-позы (Спринт 3)
+    # Пока берём случайный пример из тестового набора
     X_test_raw = np.load(DATA_DIR / "X_test.npy")
     idx = np.random.randint(0, len(X_test_raw))
     pose_seq = X_test_raw[idx]
@@ -240,7 +232,6 @@ async def analyze(file: UploadFile = File(...)):
         probs = torch.softmax(logits, dim=1).numpy()[0]
         pred = int(probs.argmax())
 
-    # Сохраняем в PostgreSQL
     conn = psycopg.connect(**DB_CONFIG)
     cur = conn.cursor()
     cur.execute(

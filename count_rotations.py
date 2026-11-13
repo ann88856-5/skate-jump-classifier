@@ -1,59 +1,108 @@
+import argparse
+import json
 import numpy as np
-from pathlib import Path
-
-DATA_DIR = Path(r"C:\КП\dataset")
-X = np.load(DATA_DIR / "X.npy")
-y = np.load(DATA_DIR / "y.npy")
-
-with open(DATA_DIR / "markers.txt", encoding="utf-8") as f:
-    markers = f.read().splitlines()
-
-idx_l_hip = markers.index("L_Hip Joint")    # 9
-idx_r_hip = markers.index("R_Hip Joint")    # 44
-idx_l_sho = markers.index("L_Shoulder Joint")  # 84
-idx_r_sho = markers.index("R_Shoulder Joint")  # 111
-
-CLASSES = ["Axel", "Flip", "Loop", "Lutz", "Salchow", "Toeloop"]
-
-print(f"L_Hip: {idx_l_hip}, R_Hip: {idx_r_hip}")
-print(f"L_Sho: {idx_l_sho}, R_Sho: {idx_r_sho}")
 
 
-def count_rotations(pose_seq):
-    """Считает обороты по углу линии бёдер (L_Hip → R_Hip) в плоскости XZ."""
-    l_hip = pose_seq[:, idx_l_hip, :]
-    r_hip = pose_seq[:, idx_r_hip, :]
-
-    # Вектор от левого бедра к правому
-    vec = r_hip - l_hip  # (frames, 3)
-
-    # Угол в горизонтальной плоскости (XZ)
-    angle = np.arctan2(vec[:, 2], vec[:, 0])
-
-    # Разворачиваем
-    angle_unwrapped = np.unwrap(angle)
-
-    rotations = (angle_unwrapped[-1] - angle_unwrapped[0]) / (2 * np.pi)
-    return abs(rotations)
+def moving_average(x, w=7):
+    if w <= 1:
+        return x
+    pad = w // 2
+    xp = np.pad(x, (pad, pad), mode="edge")
+    kernel = np.ones(w) / w
+    return np.convolve(xp, kernel, mode="same")[pad:-pad]
 
 
-def count_rotations_shoulders(pose_seq):
-    """Считает обороты по углу линии плеч (L_Shoulder → R_Shoulder)."""
-    l_sho = pose_seq[:, idx_l_sho, :]
-    r_sho = pose_seq[:, idx_r_sho, :]
-    vec = r_sho - l_sho
-    angle = np.arctan2(vec[:, 2], vec[:, 0])
-    angle_unwrapped = np.unwrap(angle)
-    rotations = (angle_unwrapped[-1] - angle_unwrapped[0]) / (2 * np.pi)
-    return abs(rotations)
+def load_pose_json(path):
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    if isinstance(data, dict) and "landmarks" in data:
+        arr = np.array(data["landmarks"], dtype=np.float32)
+        fps = data.get("fps", 30.0)
+    else:
+        arr = np.array(data, dtype=np.float32)
+        fps = 30.0
+    return arr, fps
 
 
-print("\nОбороты по линии бёдер:")
-for i in range(20):
-    rot = count_rotations(X[i])
-    print(f"Пример {i:2d}: класс={CLASSES[y[i]]:8s}, оборотов={rot:.2f}")
+def body_angle(pose, w=7):
+    """Средний угол поворота корпуса в плоскости XZ (по бёдрам и плечам)."""
+    hip = pose[:, 24, [0, 2]] - pose[:, 23, [0, 2]]
+    sh = pose[:, 12, [0, 2]] - pose[:, 11, [0, 2]]
 
-print("\nОбороты по линии плеч:")
-for i in range(20):
-    rot = count_rotations_shoulders(X[i])
-    print(f"Пример {i:2d}: класс={CLASSES[y[i]]:8s}, оборотов={rot:.2f}")
+    a_hip = np.arctan2(hip[:, 1], hip[:, 0])
+    a_sh = np.arctan2(sh[:, 1], sh[:, 0])
+
+    a_hip = moving_average(np.unwrap(a_hip), w)
+    a_sh = moving_average(np.unwrap(a_sh), w)
+
+    # Медиана двух сигналов устойчивее к выбросам
+    return a_sh
+
+
+def find_air_phase(pose, fps, height_threshold=0.03, min_duration=0.25, expand=2):
+    y_hip = (pose[:, 23, 1] + pose[:, 24, 1]) / 2.0
+    y_hip = moving_average(y_hip, 7)
+
+    baseline = np.median(y_hip)
+    air = y_hip < (baseline - height_threshold)
+
+    segments = []
+    in_seg = False
+    start = 0
+    for i, v in enumerate(air):
+        if v and not in_seg:
+            start = i
+            in_seg = True
+        elif not v and in_seg:
+            if i - start >= int(fps * min_duration):
+                segments.append((start, i))
+            in_seg = False
+    if in_seg and len(air) - start >= int(fps * min_duration):
+        segments.append((start, len(air)))
+
+    # Расширяем окно на expand кадров в каждую сторону
+    T = len(pose)
+    expanded = []
+    for s, e in segments:
+        s2 = max(0, s - expand)
+        e2 = min(T, e + expand)
+        expanded.append((s2, e2))
+    return expanded, baseline
+
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--pose", required=True)
+    p.add_argument("--out", default="json/rotations.json")
+    args = p.parse_args()
+
+    pose, fps = load_pose_json(args.pose)
+    angle = body_angle(pose)
+    segments, baseline = find_air_phase(pose, fps)
+
+    results = []
+    for s, e in segments:
+        delta = angle[e - 1] - angle[s]
+        results.append({
+            "start_sec": round(s / fps, 2),
+            "end_sec": round(e / fps, 2),
+            "rotations": round(abs(delta) / (2 * np.pi), 2),
+        })
+
+    total = round(sum(r["rotations"] for r in results), 2)
+    out = {
+        "fps": fps,
+        "air_segments": [{"start": s, "end": e} for s, e in segments],
+        "jumps": results,
+        "total_rotations": total,
+        "hint": "ближайшее целое = число оборотов (1=одинарный, 2=двойной, 3=тройной, 4=четверной)",
+    }
+
+    with open(args.out, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+
+    print(json.dumps(out, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()
