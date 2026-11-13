@@ -277,7 +277,31 @@ export default function App() {
                   <p className="mt-1 text-xs text-[#0c2730]/55">Точность</p>
                 </div>
               </div>
-            </div>
+
+              {result && result.all_probs && (
+                <div className="mt-5">
+                  <p className="text-xs uppercase tracking-[0.16em] text-white/45 mb-3">Вероятности по классам</p>
+                  <div className="space-y-2">
+                    {Object.entries(result.all_probs)
+                      .sort(([, a], [, b]) => (b as number) - (a as number))
+                      .map(([cls, prob]) => (
+                        <div key={cls} className="flex items-center gap-3">
+                          <span className="w-16 text-sm text-white/70">{cls}</span>
+                          <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-[#b9f0eb]" 
+                              style={{ width: `${(prob as number * 100).toFixed(1)}%` }}
+                            />
+                          </div>
+                          <span className="w-12 text-right text-xs font-medium text-[#b9f0eb]">
+                            {(prob as number * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div> 
           </div>
         </div>
       </section>
