@@ -78,12 +78,47 @@ export default function App() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null); // 👈 Новая переменная для ошибки
 
   const chooseVideo = () => inputRef.current?.click();
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setError(null);
+    const selected = e.target.files?.[0];
+
+    if (!selected) {
+      setFile(null);
+      setVideoUrl(null);
+      setFileName("");
+      return;
+    }
+
+    // Проверка на видео
+    if (!selected.type.startsWith("video/")) {
+      setError("Ошибка: выбранный файл не является видео.");
+      setFile(null);
+      return;
+    }
+
+    // Проверка размера (макс 200 МБ)
+    const MAX_SIZE_MB = 200;
+    if (selected.size > MAX_SIZE_MB * 1024 * 1024) {
+      setError(`Ошибка: файл слишком большой (макс. ${MAX_SIZE_MB} МБ).`);
+      setFile(null);
+      return;
+    }
+
+    // Если всё ок
+    setFile(selected);
+    setFileName(selected.name);
+    setVideoUrl(URL.createObjectURL(selected));
+  };
 
   const handleAnalyze = async () => {
     if (!file) return;
     setLoading(true);
+    setError(null); 
     const formData = new FormData();
     formData.append("file", file);
 
@@ -92,11 +127,15 @@ export default function App() {
         method: "POST",
         body: formData,
       });
+      
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      
       const data = await response.json();
       setResult(data);
-      setShowDemo(true); 
-    } catch (error) {
+      setShowDemo(true);
+    } catch (error: any) {
       console.error("Ошибка:", error);
+      setError(error.message || "Ошибка при загрузке. Проверьте сервер.");
     } finally {
       setLoading(false);
     }
@@ -176,7 +215,10 @@ export default function App() {
                 Смотреть демо
               </button>
             </div>
+            
             {fileName && <p className="mt-4 text-sm text-[#b9f0eb]">Выбрано: {fileName}</p>}
+            {error && <p className="mt-4 text-sm font-semibold text-red-400">{error}</p>}
+            
           </div>
 
           <div className="mt-16 self-end lg:mt-52">
@@ -190,7 +232,7 @@ export default function App() {
                     {result ? result.jump_type : "Ожидание видео..."}
                   </p>
                 </div>
-                <span className="...">
+                <span className="rounded-full bg-[#b9f0eb] px-3 py-1.5 text-xs font-semibold text-[#0c2730]">
                   {result ? `${(result.confidence * 100).toFixed(0)}%` : "--%"}
                 </span>
               </div>
@@ -216,23 +258,18 @@ export default function App() {
                 </svg>
               </div>
               <div className="grid grid-cols-3 gap-2">
-                {/* 1. Тип прыжка */}
                 <div className="rounded-2xl p-3 bg-white/[.07]">
                   <p className="text-xl font-semibold text-[#b9f0eb]">
                     {result ? result.jump_type : "Тип"}
                   </p>
                   <p className="mt-1 text-xs text-white/40">Прыжок</p>
                 </div>
-
-                {/* 2. Количество оборотов */}
                 <div className="rounded-2xl p-3 bg-white/[.07]">
                   <p className="text-xl font-semibold">
                     {result ? result.rotations.toFixed(2) : "0.00"}
                   </p>
                   <p className="mt-1 text-xs text-white/40">Обороты</p>
                 </div>
-
-                {/* 3. Уверенность модели */}
                 <div className="rounded-2xl p-3 bg-[#b9f0eb] text-[#0c2730]">
                   <p className="text-xl font-semibold">
                     {result ? `${(result.confidence * 100).toFixed(0)}%` : "--%"}
@@ -242,10 +279,6 @@ export default function App() {
               </div>
             </div>
           </div>
-        </div>
-        <div className="absolute bottom-7 left-1/2 z-10 hidden -translate-x-1/2 items-center gap-3 text-[10px] uppercase tracking-[.22em] text-white/40 md:flex">
-          <span className="h-px w-12 bg-white/25" /> Листайте вниз{" "}
-          <span className="h-px w-12 bg-white/25" />
         </div>
       </section>
 
@@ -389,13 +422,7 @@ export default function App() {
         type="file"
         accept="video/*"
         className="hidden"
-        onChange={(e) => {
-          const selected = e.target.files?.[0];
-          if (selected) {
-            setFile(selected);
-            setFileName(selected.name);
-          }
-        }}
+        onChange={handleFileChange} 
       />
 
       {showDemo && (
@@ -407,14 +434,20 @@ export default function App() {
             className="relative aspect-video w-full max-w-4xl overflow-hidden rounded-[28px] bg-[#102f36] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Показываем видео со скелетом, если оно пришло с сервера */}
             {result && result.skeleton_url ? (
               <video
                 src={`http://127.0.0.1:8000${result.skeleton_url}`}
                 controls
                 autoPlay
                 loop
-                className="h-full w-full object-contain" // object-contain, чтобы видео не обрезалось
+                className="h-full w-full object-contain"
+              />
+            ) : videoUrl ? (
+              <video
+                src={videoUrl}
+                controls
+                autoPlay
+                className="h-full w-full object-contain opacity-50"
               />
             ) : (
               <div className="grid h-full place-items-center text-white/50">
@@ -422,7 +455,6 @@ export default function App() {
               </div>
             )}
 
-            {/* Кнопка закрытия */}
             <button
               className="absolute right-5 top-5 grid size-10 place-items-center rounded-full bg-black/50 text-xl text-white hover:bg-black/80 transition"
               onClick={() => setShowDemo(false)}
