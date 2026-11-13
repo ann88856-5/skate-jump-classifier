@@ -17,13 +17,35 @@ export default function UploadForm() {
   const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setError(null); // Сбрасываем старую ошибку
     const selected = e.target.files?.[0] || null;
-    setFile(selected);
-    if (selected) {
-      setVideoUrl(URL.createObjectURL(selected));
-    } else {
+    
+    if (!selected) {
+      setFile(null);
       setVideoUrl(null);
+      return;
     }
+
+    // 1. Проверка типа файла (видео или нет)
+    if (!selected.type.startsWith("video/")) {
+      setError("Ошибка: выбранный файл не является видео.");
+      setFile(null);
+      setVideoUrl(null);
+      return;
+    }
+
+    // 2. Проверка размера (макс 200 МБ)
+    const MAX_SIZE_MB = 200;
+    if (selected.size > MAX_SIZE_MB * 1024 * 1024) {
+      setError(`Ошибка: файл слишком большой (макс. ${MAX_SIZE_MB} МБ).`);
+      setFile(null);
+      setVideoUrl(null);
+      return;
+    }
+
+    // Если всё ок сохраняем файл
+    setFile(selected);
+    setVideoUrl(URL.createObjectURL(selected));
   };
 
   const handleUpload = async () => {
@@ -53,8 +75,8 @@ export default function UploadForm() {
     <div style={{
       padding: 20,
       maxWidth: 800,
-      margin: '0 auto',        // ← центрирование по горизонтали
-      textAlign: 'center'      // ← центрирование содержимого
+      margin: '0 auto',
+      textAlign: 'center'
     }}>
       <h2>Загрузка видео</h2>
 
@@ -72,7 +94,7 @@ export default function UploadForm() {
         {loading ? 'Анализ...' : 'Анализировать'}
       </button>
 
-      {error && <p style={{ color: 'red' }}>Ошибка: {error}</p>}
+      {error && <p style={{ color: 'red', fontWeight: 'bold' }}>Ошибка: {error}</p>}
 
       {videoUrl && (
         <div style={{ marginTop: 20 }}>
@@ -86,7 +108,7 @@ export default function UploadForm() {
               borderRadius: 8,
               border: '1px solid #ccc',
               display: 'block',
-              margin: '0 auto'     // ← центрирование видео
+              margin: '0 auto'
             }}
           >
             Ваш браузер не поддерживает видео.
