@@ -27,7 +27,7 @@ X_test_t = torch.tensor(X_test, dtype=torch.float32)
 y_test_t = torch.tensor(y_test, dtype=torch.long)
 
 train_ds = TensorDataset(X_train_t, y_train_t)
-train_loader = DataLoader(train_ds, batch_size=16, shuffle=True)
+train_loader = DataLoader(train_ds, batch_size=32, shuffle=True)
 
 
 class JumpLSTM(nn.Module):
@@ -40,19 +40,20 @@ class JumpLSTM(nn.Module):
 
     def forward(self, x):
         out, _ = self.lstm(x)
-        out = out.mean(dim=1)
+        out = torch.max(out, dim=1)[0] 
         out = self.dropout(out)
         return self.fc(out)
 
 
 model = JumpLSTM(input_dim=X_train.shape[2]).to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-4)
+# Чуть увеличил learning rate (1e-3), чтобы быстрее сходилось на CPU
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-4)
 criterion = nn.CrossEntropyLoss()
 
-EPOCHS = 25
+EPOCHS = 50
 best_test_acc = 0
 best_epoch = 0
-patience = 25
+patience = 15 
 no_improve = 0
 
 for epoch in range(EPOCHS):

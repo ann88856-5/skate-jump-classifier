@@ -5,11 +5,12 @@ from mediapipe.tasks.python import vision
 import numpy as np
 import torch
 import torch.nn as nn
+from pathlib import Path
 
 # --- 1. НАСТРОЙКИ ---
-VIDEO_PATH = "test_video.mp4" ### ТЕСТ ВИДЕО МЕНЯТЬ ЗДЕСЬ!!!
+VIDEO_PATH = "test_video.mp4" 
 MODEL_PATH = "pose_landmarker_full.task"
-LSTM_MODEL_PATH = "dataset/best_model.pt" 
+LSTM_MODEL_PATH = "dataset/best_model_final.pt" 
 CLASSES = ["Axel", "Flip", "Loop", "Lutz", "Salchow", "Toeloop"]
 
 # --- 2. АРХИТЕКТУРА ---
@@ -22,7 +23,7 @@ class JumpLSTM(nn.Module):
 
     def forward(self, x):
         out, _ = self.lstm(x)
-        out = out.mean(dim=1)
+        out = torch.max(out, dim=1)[0] 
         out = self.dropout(out)
         return self.fc(out)
 
@@ -33,11 +34,8 @@ model.eval()
 # --- 3. ИЗВЛЕЧЕНИЕ ДАННЫХ ---
 print(f"Анализ видео: {VIDEO_PATH}...")
 cap = cv2.VideoCapture(VIDEO_PATH)
-if not cap.isOpened():
-    print(f"ОШИБКА: Не удалось открыть видео {VIDEO_PATH}. Проверь, что файл существует и это реально видео.")
-    exit()
-
 frames_landmarks = []
+
 base_options = python.BaseOptions(model_asset_path=MODEL_PATH)
 options = vision.PoseLandmarkerOptions(base_options=base_options, running_mode=vision.RunningMode.VIDEO)
 landmarker = vision.PoseLandmarker.create_from_options(options)
@@ -64,24 +62,16 @@ while cap.isOpened():
 
 cap.release()
 
-# --- ЗАЩИТА ОТ ПУСТОТЫ ---
-if len(frames_landmarks) == 0 or np.array(frames_landmarks).shape[0] == 0:
-    print("ОШИБКА: Видео пустое или MediaPipe не нашел ни одного человека на видео.")
-    exit()
+positions = np.array(frames_landmarks, dtype=np.float32)
 
 # Нормализация
-positions = np.array(frames_landmarks, dtype=np.float32)
-if positions.ndim != 3:
-    print(f"ОШИБКА: Неправильная размерность массива {positions.shape}")
-    exit()
-
 left_hip, right_hip = positions[:, 23, :], positions[:, 24, :]
 positions = positions - np.expand_dims((left_hip + right_hip) / 2.0, axis=1)
 
-if positions.shape[0] > 300: 
-    positions = positions[100:400]
-elif positions.shape[0] < 300: 
-    positions = np.concatenate([positions, np.repeat(positions[-1:], 300 - positions.shape[0], axis=0)])
+# УМНАЯ РАСТЯЖКА ДО 300 КАДРОВ (вместо обрезки)
+n_frames = positions.shape[0]
+indices = np.linspace(0, n_frames - 1, 300).astype(int)
+positions = positions[indices]
 
 # --- 4. ПРЕДСКАЗАНИЕ ---
 X_test = torch.tensor(positions.reshape(1, 300, -1), dtype=torch.float32)
