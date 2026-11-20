@@ -1,4 +1,4 @@
-FROM python:3.14-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -16,13 +16,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 
 RUN pip install --no-cache-dir --timeout 600 --retries 5 \
-    torch==2.15.0 \
+    torch==2.2.2 \
     -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY json ./json
-COPY dataset ./dataset
 COPY . .
 
 EXPOSE 8000
